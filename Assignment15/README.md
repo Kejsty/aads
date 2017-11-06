@@ -6,7 +6,7 @@ To run all input files from directory **inputs** run:
 
 ```
 chmod +x test.sh
-`.\test.sh
+.\test.sh
 ```
 
 This runs algorithm on every *.triangles from inputs, and compares result with *.result
