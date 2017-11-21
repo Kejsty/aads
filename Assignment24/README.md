@@ -21,7 +21,7 @@ chmod +x compare.sh
 .\compare.sh
 ```
 
-This runs algorithm on every *.txt from inputs and compares result with *.result
+This runs both algorithms on every *.txt from inputs and compares their running time.
 
 
 ### Compile implementation
