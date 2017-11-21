@@ -1,0 +1,10 @@
+.tree file format:
+
+line 1:  number of vertices, numv
+
+following lines:  <int A> <int B>   edge from vertex A to B.  Vertices are numbered 0 .. numv-1
+
+
+.result files:
+ line 1: size of largest independent set
+ following lines: vertices of largest independent set (not necessarily unique)
