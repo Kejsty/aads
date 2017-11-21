@@ -36,7 +36,7 @@ The result can be subsequently found in inputs/some_input.myresults
 
 ## Data
 
-These input data are a part of given by [Dr Peter Palfrader](https://www.palfrader.org/) for this assignment.
+These input data were given by [Dr Peter Palfrader](https://www.palfrader.org/) for this assignment.
 
 ## Assignemnt
 
