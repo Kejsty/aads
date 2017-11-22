@@ -53,20 +53,30 @@ std::vector<std::pair<int, int>> read(const std::string &name) {
 /**
  * Painfully creates a tree from the input edges.
  */
-std::map<int, std::unique_ptr<Node>> parse (const std::string &name) {
-	std::map<int, std::unique_ptr<Node>> nodes;
+std::vector<std::unique_ptr<Node>> parse (const std::string &name) {
+	std::vector<std::unique_ptr<Node>> nodes;
 
-	std::map<int, std::set<int>> successors;
 	auto edges = read(name);
 
-	for (auto &edge : edges) {
-		successors[edge.first].insert(edge.second);
-		successors[edge.second].insert(edge.first);
+	const size_t verticesCount = edges.size() + 1;
+	nodes.reserve(verticesCount);
+	//the size will be in O(V+E), it's bounded by the number of edges
+	std::vector<std::vector<int>> successors(verticesCount);
+
+	for(int i = 0; i < verticesCount; ++i) {
+		nodes.push_back(std::make_unique<Node>(verticesCount));
 	}
 
-	std::queue<std::pair<int, int>> investigate;
-	investigate.push({successors.begin()->first, -1});
+	for (auto &edge : edges) {
+		successors[edge.first].push_back(edge.second);
+		successors[edge.second].push_back(edge.first);
+	}
 
+	//each vertex is added once = O(V+E)
+	std::queue<std::pair<int, int>> investigate;
+	investigate.push({successors[0][0], -1});
+
+	//executed O(V+E) times
 	while(!investigate.empty()) {
 		int toCheck, parentID;
 		std::tie(toCheck, parentID) = investigate.front();
@@ -76,27 +86,26 @@ std::map<int, std::unique_ptr<Node>> parse (const std::string &name) {
 		Node *parent = nullptr;
 
 		if (parentID != -1 ) {
-			auto parentIt = nodes.find(parentID);
-			parent = parentIt->second.get();
+			parent = nodes[parentID].get();
 		}
 
-		Node *me;
-		auto meIt = nodes.insert({toCheck, std::make_unique<Node>(toCheck)}).first;
-		me = meIt->second.get();
+		Node *me = nodes[toCheck].get();
 
 		if (parent != nullptr) {
 			parent->childs.push_back(me);
 		}
 		me->up = parent;
 		for (int myChild : allSucc) {
-			if (!parent || myChild != parent->number ) {
+			if (myChild != parentID ) {
 				investigate.push({myChild, toCheck});
 			}
 		}
 	}
-
 	return nodes;
 }
+
+
+
 
 /**
  * Counts optimal value for node. After counting the value is store, so
@@ -148,8 +157,8 @@ std::set<int> solve(const std::string &name) {
 	//root is a node wihtout parent;
 	Node *root = nullptr;
 	for (auto &node : nodes) {
-		if (node.second->up == nullptr) {
-			root = node.second.get();
+		if (node->up == nullptr) {
+			root = node.get();
 			break;
 		}
 	}
