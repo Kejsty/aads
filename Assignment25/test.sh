@@ -3,9 +3,9 @@
 #compile
 clang++ -std=c++14 -o out solution.cpp
 cd "trees"
-for x in *.result; do 
-	t=$(echo $x | sed 's/\.result$//');
-  	../out $t
+for x in *.tree; do 
+	t=$(echo $x | sed 's/\.tree$//');
+  	../out -test $x
 	if cmp -s "$t.myresults" "$t.result"
 	then
 	   echo "The results for $t matches"
@@ -15,4 +15,4 @@ for x in *.result; do
 	rm "$t.myresults"
 done
 cd ..
-# rm "out"
+rm "out"

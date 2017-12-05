@@ -12,11 +12,11 @@ using namespace std;
 struct Node
 {
 	int number;
-	Node *up;
-	std::vector<Node *> childs;
+	int parent;;
+	std::vector<int> childs;
 	int opt;
 	bool selected;
-	Node (int number) : number(number), up(nullptr), childs(), opt(-1), selected(false){}
+	Node (int number) : number(number), parent(-1), childs(), opt(-1), selected(false){}
 };
 
 /**
@@ -35,7 +35,7 @@ void printResults(std::ostream& output, const std::set<int> &results) {
  */
 std::vector<std::pair<int, int>> read(const std::string &name) {
 	ifstream input;
-	input.open(name + ".tree");
+	input.open(name);
 
 	std::vector<std::pair<int, int>> values;
 	int fst, snd, all;
@@ -51,132 +51,131 @@ std::vector<std::pair<int, int>> read(const std::string &name) {
 }
 
 /**
- * Painfully creates a tree from the input edges.
+ * Creates a tree from the input edges.
  */
-std::vector<std::unique_ptr<Node>> parse (const std::string &name) {
-	std::vector<std::unique_ptr<Node>> nodes;
+std::vector<Node> parse (const std::string &name, bool inform = false) {
+	std::vector<Node> nodes;
 
 	auto edges = read(name);
 
 	const size_t verticesCount = edges.size() + 1;
 	nodes.reserve(verticesCount);
-	//the size will be in O(V+E), it's bounded by the number of edges
-	std::vector<std::vector<int>> successors(verticesCount);
+	if(inform) 
+		std::cout << "Input size: " << verticesCount << std::endl;
 
 	for(int i = 0; i < verticesCount; ++i) {
-		nodes.push_back(std::make_unique<Node>(verticesCount));
+		nodes.emplace_back(i);
 	}
 
 	for (auto &edge : edges) {
-		successors[edge.first].push_back(edge.second);
-		successors[edge.second].push_back(edge.first);
+		nodes[edge.first].childs.push_back(edge.second);
+		nodes[edge.second].childs.push_back(edge.first);
 	}
 
 	//each vertex is added once = O(V+E)
 	std::queue<std::pair<int, int>> investigate;
-	investigate.push({successors[0][0], -1});
+	investigate.push({0, -1});
 
 	//executed O(V+E) times
 	while(!investigate.empty()) {
-		int toCheck, parentID;
-		std::tie(toCheck, parentID) = investigate.front();
+		int myID, parentID;
+		std::tie(myID, parentID) = investigate.front();
 		investigate.pop();
-		auto &allSucc = successors[toCheck];
+		nodes[myID].parent = parentID;
 
-		Node *parent = nullptr;
-
-		if (parentID != -1 ) {
-			parent = nodes[parentID].get();
-		}
-
-		Node *me = nodes[toCheck].get();
-
-		if (parent != nullptr) {
-			parent->childs.push_back(me);
-		}
-		me->up = parent;
-		for (int myChild : allSucc) {
-			if (myChild != parentID ) {
-				investigate.push({myChild, toCheck});
+		int position = -1;
+		std::vector<int>& myChilds = nodes[myID].childs;
+		for (int i = 0; i < myChilds.size(); ++i ) {
+			if (myChilds[i] == parentID) {
+				position = i;
+			}else{
+				investigate.push({myChilds[i], myID});
 			}
 		}
+		if (position >= 0) {
+			//remove parent ID
+			myChilds[position] = myChilds.back();
+			myChilds.pop_back();
+		}
+
 	}
 	return nodes;
 }
-
-
-
 
 /**
  * Counts optimal value for node. After counting the value is store, so
  * the value is counted only once.
  */
-int countOpt(Node *node) {
-	if (node->opt > -1) {
-		return node->opt;
+int countOpt(std::vector<Node> &nodes, int index) {
+	if (nodes[index].opt > -1) {
+		return nodes[index].opt;
 	}
 
 	int withMe = 0, wihtoutMe = 0;
 
 	withMe = 1;
-	for (auto &child : node->childs ) {
-		for (auto &grandChild : child->childs ) {
-			withMe += countOpt(grandChild);
+	for (auto childID : nodes[index].childs ) {
+		for (auto &grandChild : nodes[childID].childs ) {
+			withMe += countOpt(nodes, grandChild);
 		}
-		wihtoutMe += countOpt(child);
+		wihtoutMe += countOpt(nodes, childID);
 	}
 
 	if (withMe > wihtoutMe) {
-		node->selected = true;
+		nodes[index].selected = true;
 	}
-	node->opt = std::max(withMe, wihtoutMe);
-	return node->opt;
+	nodes[index].opt = std::max(withMe, wihtoutMe);
+	return nodes[index].opt;
 }
 
 /**
  * Incrementaly builds the set of selected nodes.
  */
-void buildSet(std::set<int> &set, Node *node) {
-	if (node->selected) {
-		set.insert(node->number);
-		for (auto &child : node->childs ) {
-			for (auto &grandChild : child->childs ) {
-				buildSet(set, grandChild);
+void buildSet(std::set<int> &set, std::vector<Node> &nodes, int rootID) {
+	if (nodes[rootID].selected) {
+		set.insert(rootID);
+		for (auto &childID : nodes[rootID].childs ) {
+			for (auto &grandChild : nodes[childID].childs ) {
+				buildSet(set,nodes, grandChild);
 			}
 		}
 	}else{
-		for (auto &child : node->childs ) {
-			buildSet(set, child);
+		for (auto &child : nodes[rootID].childs ) {
+			buildSet(set, nodes, child);
 		}
 	}
 }
 
-std::set<int> solve(const std::string &name) {
-	auto nodes = parse(name);
+std::set<int> solve(const std::string &name, bool inform = false, bool shouldBuildSet = true) {
+	//We count only the time that solving algorithm takes, woth time to parse
+	auto t1 = std::chrono::high_resolution_clock::now();
+	auto nodes = parse(name, inform);
 
 	//root is a node wihtout parent;
-	Node *root = nullptr;
+	Node rootID = 0;
+	int number = countOpt(nodes, 0);
 	for (auto &node : nodes) {
-		if (node->up == nullptr) {
-			root = node.get();
-			break;
-		}
 	}
 
-	//We count only the time that solving algorithm takes, not parsing time.
-	auto t1 = std::chrono::high_resolution_clock::now();
-	int number = countOpt(root);
+	std::set<int> result;
+    if (shouldBuildSet) {
+    	//build set for printing it out.
+		buildSet(result, nodes, 0);
+    }
 	auto t2 = std::chrono::high_resolution_clock::now();
 	auto time = std::chrono::duration_cast<std::chrono::microseconds>(t2-t1).count();
-	std::cout << "Solving took "
-              << time
-              << " microseconds\n";
 
-    //build set for printing it out.
-	std::set<int> result;
-	buildSet(result, root);
+	if (inform)
+		std::cout << "Solving took "
+			<< (shouldBuildSet ? "with building Set " : "without building Set ")
+         	<< time
+          	<< " microseconds\n";
 	return result;
+}
 
+std::string removeSuffix(std::string name) {
+	auto index = name.find_last_of(".");
+	return name.substr(0, index);
 }
 
 int main(int argc, char **argv) {
@@ -184,10 +183,25 @@ int main(int argc, char **argv) {
 		std::cout << "Bad usage\n";
 		return 1;
 	}
-	auto result = solve(argv[1]);
-	std::string name(argv[1]);
-	ofstream output (name +".myresults");
-	printResults(output, result);
-	output.close();
+
+	if (argc == 2) {
+		auto result = solve(argv[1]);
+		std::cout << result.size() << std::endl;
+		return 0;
+	}
+
+	std::string option(argv[1]);
+	if (option == "-v") {
+		auto result = solve(argv[2]);
+		printResults(std::cout, result);
+	}else if (option == "-time") {
+		solve(argv[2], true);
+		solve(argv[2], true, false);
+	}else if (option == "-test") {
+		auto result = solve(argv[2]);
+		ofstream output (removeSuffix(argv[2]) +".myresults");
+		printResults(output, result);
+		output.close();
+	}
 	return 0;
 }

@@ -12,14 +12,24 @@ chmod +x test.sh
 This runs algorithm on every *.txt from inputs and compares result with *.result
 
 
+### Script for comparision of running time for different batch size
+
+```
+chmod +x time.sh
+.\time.sh
+```
+
+This runs algorithm on inputs with sizes {10, 100, ..., 10 000 000}, and prints out running time
+
+
 ### Compile implementation
 
 ```
 clang++ -std=c++14 -o out solution.cpp
-./out data/some_input
+./out data/some_input.tree
 ```
 
-It lookups a file data/some_input.txt and solves this instance.
+It lookups a file data/some_input.tree and solves this instance.
 The result can be subsequently found in inputs/some_input.myresults
 
 ## Data
